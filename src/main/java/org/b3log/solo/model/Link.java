@@ -1,6 +1,6 @@
 /*
  * Solo - A small and beautiful blogging system written in Java.
- * Copyright (c) 2010-2018, b3log.org & hacpai.com
+ * Copyright (c) 2010-present, b3log.org
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -21,8 +21,8 @@ package org.b3log.solo.model;
  * This class defines all link model relevant keys.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.0.2, Oct 31, 2011
- * @since  0.3.1
+ * @version 1.1.0.0, Oct 23, 2019
+ * @since 0.3.1
  */
 public final class Link {
 
@@ -52,6 +52,11 @@ public final class Link {
     public static final String LINK_DESCRIPTION = "linkDescription";
 
     /**
+     * Key of icon URL.
+     */
+    public static final String LINK_ICON = "linkIcon";
+
+    /**
      * Key of order.
      */
     public static final String LINK_ORDER = "linkOrder";
@@ -59,5 +64,6 @@ public final class Link {
     /**
      * Private constructor.
      */
-    private Link() {}
+    private Link() {
+    }
 }

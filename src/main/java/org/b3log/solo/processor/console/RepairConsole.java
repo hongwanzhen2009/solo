@@ -1,6 +1,6 @@
 /*
  * Solo - A small and beautiful blogging system written in Java.
- * Copyright (c) 2010-2018, b3log.org & hacpai.com
+ * Copyright (c) 2010-present, b3log.org
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,34 +17,24 @@
  */
 package org.b3log.solo.processor.console;
 
-import org.b3log.latke.Keys;
-import org.b3log.latke.ioc.BeanManager;
+import org.b3log.latke.Latkes;
+import org.b3log.latke.http.RequestContext;
+import org.b3log.latke.http.annotation.Before;
+import org.b3log.latke.http.annotation.RequestProcessor;
+import org.b3log.latke.http.renderer.TextHtmlRenderer;
 import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
-import org.b3log.latke.mail.MailService;
-import org.b3log.latke.mail.MailService.Message;
-import org.b3log.latke.mail.MailServiceFactory;
-import org.b3log.latke.repository.Query;
-import org.b3log.latke.repository.annotation.Transactional;
-import org.b3log.latke.servlet.HTTPRequestContext;
-import org.b3log.latke.servlet.HTTPRequestMethod;
-import org.b3log.latke.servlet.annotation.Before;
-import org.b3log.latke.servlet.annotation.RequestProcessing;
-import org.b3log.latke.servlet.annotation.RequestProcessor;
-import org.b3log.latke.servlet.renderer.TextHTMLRenderer;
-import org.b3log.solo.model.Article;
+import org.b3log.latke.repository.*;
 import org.b3log.solo.model.Option;
-import org.b3log.solo.model.Tag;
+import org.b3log.solo.repository.ArchiveDateArticleRepository;
 import org.b3log.solo.repository.ArticleRepository;
 import org.b3log.solo.repository.TagArticleRepository;
 import org.b3log.solo.repository.TagRepository;
+import org.b3log.solo.service.OptionQueryService;
 import org.b3log.solo.service.PreferenceMgmtService;
-import org.b3log.solo.service.PreferenceQueryService;
 import org.b3log.solo.service.StatisticMgmtService;
 import org.b3log.solo.service.StatisticQueryService;
-import org.b3log.solo.util.Solos;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.List;
@@ -53,11 +43,11 @@ import java.util.List;
  * Provides patches on some special issues.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.2.0.17, Sep 25, 2018
+ * @version 1.3.0.0, Nov 11, 2019
  * @since 0.3.1
  */
 @RequestProcessor
-@Before(adviceClass = ConsoleAuthAdvice.class)
+@Before(ConsoleAuthAdvice.class)
 public class RepairConsole {
 
     /**
@@ -66,21 +56,10 @@ public class RepairConsole {
     private static final Logger LOGGER = Logger.getLogger(RepairConsole.class);
 
     /**
-     * Mail service.
-     */
-    private static final MailService MAIL_SVC = MailServiceFactory.getMailService();
-
-    /**
-     * Bean manager.
+     * Option query service.
      */
     @Inject
-    private BeanManager beanManager;
-
-    /**
-     * Preference query service.
-     */
-    @Inject
-    private PreferenceQueryService preferenceQueryService;
+    private OptionQueryService optionQueryService;
 
     /**
      * Preference management service.
@@ -107,6 +86,12 @@ public class RepairConsole {
     private ArticleRepository articleRepository;
 
     /**
+     * ArchiveDate-Article repository.
+     */
+    @Inject
+    private ArchiveDateArticleRepository archiveDateArticleRepository;
+
+    /**
      * Statistic query service.
      */
     @Inject
@@ -123,87 +108,78 @@ public class RepairConsole {
      *
      * @param context the specified context
      */
-    @RequestProcessing(value = "/fix/restore-signs.do", method = HTTPRequestMethod.GET)
-    public void restoreSigns(final HTTPRequestContext context) {
-        final TextHTMLRenderer renderer = new TextHTMLRenderer();
+    public void restoreSigns(final RequestContext context) {
+        final TextHtmlRenderer renderer = new TextHtmlRenderer();
         context.setRenderer(renderer);
 
         try {
-            final JSONObject preference = preferenceQueryService.getPreference();
-            final String originalSigns = preference.getString(Option.ID_C_SIGNS);
-
+            final JSONObject preference = optionQueryService.getPreference();
             preference.put(Option.ID_C_SIGNS, Option.DefaultPreference.DEFAULT_SIGNS);
             preferenceMgmtService.updatePreference(preference);
 
-            renderer.setContent("Restores signs succeeded.");
-
-            // Sends the sample signs to developer
-            if (!Solos.isConfigured()) {
-                return;
-            }
-
-            final Message msg = new MailService.Message();
-            msg.setFrom(preference.getString(Option.ID_C_ADMIN_EMAIL));
-            msg.addRecipient("d@b3log.org");
-            msg.setSubject("Restore signs");
-            msg.setHtmlBody(originalSigns + "<p>Admin email: " + preference.getString(Option.ID_C_ADMIN_EMAIL) + "</p>");
-
-            MAIL_SVC.send(msg);
+            renderer.setContent("Restore signs succeeded.");
         } catch (final Exception e) {
             LOGGER.log(Level.ERROR, e.getMessage(), e);
 
-            renderer.setContent("Restores signs failed, error msg[" + e.getMessage() + "]");
+            renderer.setContent("Restores signs failed, error msg [" + e.getMessage() + "]");
         }
     }
 
     /**
-     * Repairs tag article counter.
+     * Cleans duplicated archive date-articles.
      *
      * @param context the specified context
      */
-    @RequestProcessing(value = "/fix/tag-article-counter-repair.do", method = HTTPRequestMethod.GET)
-    @Transactional
-    public void repairTagArticleCounter(final HTTPRequestContext context) {
-        final TextHTMLRenderer renderer = new TextHTMLRenderer();
+    public void cleanArchiveDateArticles(final RequestContext context) {
+        final TextHtmlRenderer renderer = new TextHtmlRenderer();
         context.setRenderer(renderer);
 
+        final Transaction transaction = archiveDateArticleRepository.beginTransaction();
         try {
-            final List<JSONObject> tags = tagRepository.getList(new Query());
-            for (final JSONObject tag : tags) {
-                final String tagId = tag.getString(Keys.OBJECT_ID);
-                final JSONObject tagArticleResult = tagArticleRepository.getByTagId(tagId, 1, Integer.MAX_VALUE);
-                final JSONArray tagArticles = tagArticleResult.getJSONArray(Keys.RESULTS);
-                final int tagRefCnt = tagArticles.length();
-                int publishedTagRefCnt = 0;
-
-                for (int i = 0; i < tagRefCnt; i++) {
-                    final JSONObject tagArticle = tagArticles.getJSONObject(i);
-                    final String articleId = tagArticle.getString(Article.ARTICLE + "_" + Keys.OBJECT_ID);
-                    final JSONObject article = articleRepository.get(articleId);
-                    if (null == article) {
-                        tagArticleRepository.remove(tagArticle.optString(Keys.OBJECT_ID));
-
-                        continue;
+            // 清理存档-文章关联表中的冗余数据
+            final String tablePrefix = Latkes.getLocalProperty("jdbc.tablePrefix") + "_";
+            final List<JSONObject> archiveDateArticles = archiveDateArticleRepository.select("SELECT\n" +
+                    "\t*\n" +
+                    "FROM\n" +
+                    "\t" + tablePrefix + "archivedate_article\n" +
+                    "WHERE\n" +
+                    "\tarticle_oId IN (\n" +
+                    "\t\tSELECT\n" +
+                    "\t\t\tarticle_oId\n" +
+                    "\t\tFROM\n" +
+                    "\t\t\t" + tablePrefix + "archivedate_article\n" +
+                    "\t\tGROUP BY\n" +
+                    "\t\t\tarticle_oId\n" +
+                    "\t\tHAVING\n" +
+                    "\t\t\tcount(*) > 1\n" +
+                    "\t) ORDER BY archiveDate_oId, article_oId DESC");
+            for (int i = 0; i < archiveDateArticles.size(); i++) {
+                final JSONObject archiveDateArticle = archiveDateArticles.get(i);
+                final String archiveDateId = archiveDateArticle.optString("archiveDate_oId");
+                final String articleId = archiveDateArticle.optString("article_oId");
+                archiveDateArticleRepository.remove(new Query().setFilter(CompositeFilterOperator.and(
+                        new PropertyFilter("archiveDate_oId", FilterOperator.EQUAL, archiveDateId),
+                        new PropertyFilter("article_oId", FilterOperator.EQUAL, articleId),
+                        new PropertyFilter("oId", FilterOperator.NOT_EQUAL, archiveDateArticle.optString("oId")))));
+                while (i < archiveDateArticles.size() - 1) {
+                    if (!archiveDateId.equalsIgnoreCase(archiveDateArticles.get(i + 1).optString("archiveDate_oId"))
+                            || !articleId.equalsIgnoreCase(archiveDateArticles.get(i + 1).optString("article_oId"))) {
+                        break;
                     }
-
-                    if (article.getBoolean(Article.ARTICLE_IS_PUBLISHED)) {
-                        publishedTagRefCnt++;
-                    }
+                    i++;
                 }
-
-                tag.put(Tag.TAG_REFERENCE_COUNT, tagRefCnt);
-                tag.put(Tag.TAG_PUBLISHED_REFERENCE_COUNT, publishedTagRefCnt);
-
-                tagRepository.update(tagId, tag);
-
-                LOGGER.log(Level.INFO, "Repaired tag[title={0}, refCnt={1}, publishedTagRefCnt={2}]",
-                        tag.getString(Tag.TAG_TITLE), tagRefCnt, publishedTagRefCnt);
             }
 
-            renderer.setContent("Repair successfully!");
+            transaction.commit();
+
+            renderer.setContent("Cleaned duplicated archive date articles");
         } catch (final Exception e) {
+            if (transaction.isActive()) {
+                transaction.rollback();
+            }
+
             LOGGER.log(Level.ERROR, e.getMessage(), e);
-            renderer.setContent("Repairs failed, error msg[" + e.getMessage() + "]");
+            renderer.setContent("Clean duplicated archive date articles failed [" + e.getMessage() + "]");
         }
     }
 }

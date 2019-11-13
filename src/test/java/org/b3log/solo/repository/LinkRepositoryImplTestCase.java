@@ -1,6 +1,6 @@
 /*
  * Solo - A small and beautiful blogging system written in Java.
- * Copyright (c) 2010-2018, b3log.org & hacpai.com
+ * Copyright (c) 2010-present, b3log.org
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,6 @@ package org.b3log.solo.repository;
 import org.b3log.latke.repository.Transaction;
 import org.b3log.solo.AbstractTestCase;
 import org.b3log.solo.model.Link;
-import org.b3log.solo.repository.LinkRepository;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -29,14 +28,14 @@ import org.testng.annotations.Test;
  * {@link LinkRepository} test case.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.0.0, Dec 29, 2011
+ * @version 1.0.0.1, Oct 23, 2019
  */
 @Test(suiteName = "repository")
 public final class LinkRepositoryImplTestCase extends AbstractTestCase {
 
     /**
      * Tests.
-     * 
+     *
      * @throws Exception exception
      */
     @Test
@@ -50,6 +49,7 @@ public final class LinkRepositoryImplTestCase extends AbstractTestCase {
         link1.put(Link.LINK_TITLE, "link title");
         link1.put(Link.LINK_DESCRIPTION, "link description");
         link1.put(Link.LINK_ADDRESS, "link address");
+        link1.put(Link.LINK_ICON, "link icon");
         link1.put(Link.LINK_ORDER, link1Order);
 
         Transaction transaction = linkRepository.beginTransaction();

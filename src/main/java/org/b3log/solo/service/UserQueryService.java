@@ -1,6 +1,6 @@
 /*
  * Solo - A small and beautiful blogging system written in Java.
- * Copyright (c) 2010-2018, b3log.org & hacpai.com
+ * Copyright (c) 2010-present, b3log.org
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -24,12 +24,15 @@ import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.Pagination;
 import org.b3log.latke.model.User;
+import org.b3log.latke.repository.FilterOperator;
+import org.b3log.latke.repository.PropertyFilter;
 import org.b3log.latke.repository.Query;
 import org.b3log.latke.repository.RepositoryException;
 import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
 import org.b3log.latke.util.Paginator;
 import org.b3log.latke.util.URLs;
+import org.b3log.solo.model.UserExt;
 import org.b3log.solo.repository.UserRepository;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -40,7 +43,7 @@ import java.util.List;
  * User query service.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.0.7, Oct 5, 2018
+ * @version 1.1.0.1, Oct 2, 2019
  * @since 0.4.0
  */
 @Service
@@ -64,38 +67,48 @@ public class UserQueryService {
     private UserMgmtService userMgmtService;
 
     /**
-     * Gets the administrator.
+     * Gets a user by the specified GitHub id.
      *
-     * @return administrator, returns {@code null} if not found
-     * @throws ServiceException service exception
+     * @param githubId the specified GitHub id
+     * @return user, returns {@code null} if not found
      */
-    public JSONObject getAdmin() throws ServiceException {
+    public JSONObject getUserByGitHubId(final String githubId) {
         try {
-            return userRepository.getAdmin();
-        } catch (final RepositoryException e) {
-            LOGGER.log(Level.ERROR, "Gets admin failed", e);
-            throw new ServiceException(e);
+            return userRepository.getFirst(new Query().setFilter(new PropertyFilter(UserExt.USER_GITHUB_ID, FilterOperator.EQUAL, githubId)));
+        } catch (final Exception e) {
+            LOGGER.log(Level.ERROR, "Gets a user by GitHub id [" + githubId + "] failed", e);
+
+            return null;
         }
     }
 
     /**
-     * Gets a user by the specified email or username.
+     * Gets the administrator.
      *
-     * @param emailOrUserName the specified email or username
-     * @return user, returns {@code null} if not found
-     * @throws ServiceException service exception
+     * @return administrator, returns {@code null} if not found
      */
-    public JSONObject getUserByEmailOrUserName(final String emailOrUserName) throws ServiceException {
+    public JSONObject getAdmin() {
         try {
-            JSONObject ret = userRepository.getByEmail(emailOrUserName);
-            if (null == ret) {
-                ret = userRepository.getByUserName(emailOrUserName);
-            }
-
-            return ret;
+            return userRepository.getAdmin();
         } catch (final RepositoryException e) {
-            LOGGER.log(Level.ERROR, "Gets a user by email or username [" + emailOrUserName + "] failed", e);
-            throw new ServiceException(e);
+            LOGGER.log(Level.ERROR, "Gets admin failed", e);
+            return null;
+        }
+    }
+
+    /**
+     * Gets a user by the specified user name.
+     *
+     * @param userName the specified user name
+     * @return user, returns {@code null} if not found
+     */
+    public JSONObject getUserByName(final String userName) {
+        try {
+            return userRepository.getByUserName(userName);
+        } catch (final RepositoryException e) {
+            LOGGER.log(Level.ERROR, "Gets a user by username [" + userName + "] failed", e);
+
+            return null;
         }
     }
 
@@ -116,8 +129,6 @@ public class UserQueryService {
      *     "users": [{
      *         "oId": "",
      *         "userName": "",
-     *         "userEmail": "",
-     *         "userPassword": "",
      *         "roleName": ""
      *      }, ....]
      * }
@@ -131,7 +142,7 @@ public class UserQueryService {
         final int currentPageNum = requestJSONObject.optInt(Pagination.PAGINATION_CURRENT_PAGE_NUM);
         final int pageSize = requestJSONObject.optInt(Pagination.PAGINATION_PAGE_SIZE);
         final int windowSize = requestJSONObject.optInt(Pagination.PAGINATION_WINDOW_SIZE);
-        final Query query = new Query().setCurrentPageNum(currentPageNum).setPageSize(pageSize);
+        final Query query = new Query().setPage(currentPageNum, pageSize);
 
         JSONObject result;
         try {
@@ -163,15 +174,12 @@ public class UserQueryService {
      * {
      *     "user": {
      *         "oId": "",
-     *         "userName": "",
-     *         "userEmail": "",
-     *         "userPassword": ""
+     *         "userName": ""
      *     }
      * }
      * </pre>, returns {@code null} if not found
-     * @throws ServiceException service exception
      */
-    public JSONObject getUser(final String userId) throws ServiceException {
+    public JSONObject getUser(final String userId) {
         final JSONObject ret = new JSONObject();
 
         JSONObject user;
@@ -179,7 +187,8 @@ public class UserQueryService {
             user = userRepository.get(userId);
         } catch (final RepositoryException e) {
             LOGGER.log(Level.ERROR, "Gets a user failed", e);
-            throw new ServiceException(e);
+
+            return null;
         }
 
         if (null == user) {
@@ -198,9 +207,9 @@ public class UserQueryService {
      */
     public String getLogoutURL() {
         String to = Latkes.getServePath();
-        to = URLs.encode(to + "/");
+        to = URLs.encode(to);
 
-        return Latkes.getContextPath() + "/logout?goto=" + to;
+        return Latkes.getContextPath() + "/logout?referer=" + to;
     }
 
     /**
@@ -213,24 +222,6 @@ public class UserQueryService {
         String to = Latkes.getServePath();
         to = URLs.encode(to + redirectURL);
 
-        return Latkes.getContextPath() + "/login?goto=" + to;
-    }
-
-    /**
-     * Sets the user management service with the specified user management service.
-     *
-     * @param userMgmtService the specified user management service
-     */
-    public void setUserMgmtService(final UserMgmtService userMgmtService) {
-        this.userMgmtService = userMgmtService;
-    }
-
-    /**
-     * Sets the user repository with the specified user repository.
-     *
-     * @param userRepository the specified user repository
-     */
-    public void setUserRepository(final UserRepository userRepository) {
-        this.userRepository = userRepository;
+        return Latkes.getContextPath() + "/start?referer=" + to;
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Solo - A small and beautiful blogging system written in Java.
- * Copyright (c) 2010-2018, b3log.org & hacpai.com
+ * Copyright (c) 2010-present, b3log.org
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -30,7 +30,7 @@ import org.testng.annotations.Test;
  * {@link ArchiveDateArticleRepository} test case.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.0.0, Dec 31, 2011
+ * @version 1.0.0.1, Oct 14, 2019
  */
 @Test(suiteName = "repository")
 public class ArchiveDateArticleRepositoryImplTestCase extends AbstractTestCase {
@@ -58,22 +58,6 @@ public class ArchiveDateArticleRepositoryImplTestCase extends AbstractTestCase {
 
         final JSONObject notFound = archiveDateArticleRepository.getByArticleId("not found");
         Assert.assertNull(notFound);
-    }
-
-    /**
-     * Get By ArchiveDate Id.
-     *
-     * @throws Exception exception
-     */
-    @Test(dependsOnMethods = "add")
-    public void getByArchiveDateId() throws Exception {
-        final ArchiveDateArticleRepository archiveDateArticleRepository = getArchiveDateArticleRepository();
-
-        final JSONObject found = archiveDateArticleRepository.getByArchiveDateId("archiveDateId", 1, Integer.MAX_VALUE);
-        Assert.assertNotNull(found);
-
-        final JSONObject notFound = archiveDateArticleRepository.getByArchiveDateId("not found", 1, Integer.MAX_VALUE);
-        Assert.assertNotNull(notFound);
     }
 
     /**

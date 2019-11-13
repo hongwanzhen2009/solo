@@ -1,6 +1,6 @@
 /*
  * Solo - A small and beautiful blogging system written in Java.
- * Copyright (c) 2010-2018, b3log.org & hacpai.com
+ * Copyright (c) 2010-present, b3log.org
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Article cache.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.2.0.1, Sep 25, 2018
+ * @version 1.2.1.0, Sep 20, 2019
  * @since 2.3.0
  */
 @Singleton
@@ -92,7 +92,13 @@ public class ArticleCache {
      * @param id the specified article id
      */
     public void removeArticle(final String id) {
+        final JSONObject article = idCache.get(id);
+        if (null == article) {
+            return;
+        }
+        final String permalink = article.optString(Article.ARTICLE_PERMALINK);
         idCache.remove(id);
+        permalinkCache.remove(permalink);
     }
 
     /**

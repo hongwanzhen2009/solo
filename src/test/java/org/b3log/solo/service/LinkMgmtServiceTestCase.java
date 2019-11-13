@@ -1,6 +1,6 @@
 /*
  * Solo - A small and beautiful blogging system written in Java.
- * Copyright (c) 2010-2018, b3log.org & hacpai.com
+ * Copyright (c) 2010-present, b3log.org
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,6 @@
  */
 package org.b3log.solo.service;
 
-import org.b3log.latke.model.User;
 import org.b3log.solo.AbstractTestCase;
 import org.b3log.solo.model.Link;
 import org.json.JSONObject;
@@ -28,34 +27,22 @@ import org.testng.annotations.Test;
  * {@link LinkMgmtService} test case.
  *
  * @author <a href="http://88250.b3log.org">Liang Ding</a>
- * @version 1.0.0.1, Sep 11, 2012
+ * @version 1.0.0.2, Oct 23, 2019
  */
 @Test(suiteName = "service")
 public class LinkMgmtServiceTestCase extends AbstractTestCase {
 
     /**
      * Init.
-     * 
-     * @throws Exception exception
      */
     @Test
-    public void init() throws Exception {
-        final InitService initService = getInitService();
-
-        final JSONObject requestJSONObject = new JSONObject();
-        requestJSONObject.put(User.USER_EMAIL, "test@gmail.com");
-        requestJSONObject.put(User.USER_NAME, "Admin");
-        requestJSONObject.put(User.USER_PASSWORD, "pass");
-
-        initService.init(requestJSONObject);
-
-        final UserQueryService userQueryService = getUserQueryService();
-        Assert.assertNotNull(userQueryService.getUserByEmailOrUserName("test@gmail.com"));
+    public void init() {
+        super.init();
     }
 
     /**
      * Add Link.
-     * 
+     *
      * @throws Exception exception
      */
     @Test(dependsOnMethods = "init")
@@ -69,6 +56,7 @@ public class LinkMgmtServiceTestCase extends AbstractTestCase {
         link.put(Link.LINK_TITLE, "link1 title");
         link.put(Link.LINK_ADDRESS, "link1 address");
         link.put(Link.LINK_DESCRIPTION, "link1 description");
+        link.put(Link.LINK_ICON, "link1 icon");
 
         final String linkId = linkMgmtService.addLink(requestJSONObject);
         Assert.assertNotNull(linkId);
@@ -76,7 +64,7 @@ public class LinkMgmtServiceTestCase extends AbstractTestCase {
 
     /**
      * Remove Link.
-     * 
+     *
      * @throws Exception exception
      */
     @Test(dependsOnMethods = "init")
@@ -90,6 +78,7 @@ public class LinkMgmtServiceTestCase extends AbstractTestCase {
         link.put(Link.LINK_TITLE, "link2 title");
         link.put(Link.LINK_ADDRESS, "link2 address");
         link.put(Link.LINK_DESCRIPTION, "link2 description");
+        link.put(Link.LINK_ICON, "link2 icon");
 
         final String linkId = linkMgmtService.addLink(requestJSONObject);
         Assert.assertNotNull(linkId);
@@ -109,7 +98,7 @@ public class LinkMgmtServiceTestCase extends AbstractTestCase {
 
     /**
      * Update Link.
-     * 
+     *
      * @throws Exception exception
      */
     @Test(dependsOnMethods = "init")
@@ -123,6 +112,7 @@ public class LinkMgmtServiceTestCase extends AbstractTestCase {
         link.put(Link.LINK_TITLE, "link3 title");
         link.put(Link.LINK_ADDRESS, "link3 address");
         link.put(Link.LINK_DESCRIPTION, "link3 description");
+        link.put(Link.LINK_ICON, "link3 icon");
 
         final String linkId = linkMgmtService.addLink(requestJSONObject);
         Assert.assertNotNull(linkId);
@@ -145,7 +135,7 @@ public class LinkMgmtServiceTestCase extends AbstractTestCase {
 
     /**
      * Change Order.
-     * 
+     *
      * @throws Exception exception
      */
     @Test(dependsOnMethods = "addLink")
@@ -159,6 +149,7 @@ public class LinkMgmtServiceTestCase extends AbstractTestCase {
         link.put(Link.LINK_TITLE, "link4 title");
         link.put(Link.LINK_ADDRESS, "link4 address");
         link.put(Link.LINK_DESCRIPTION, "link4 description");
+        link.put(Link.LINK_ICON, "link4 icon");
 
         final String linkId = linkMgmtService.addLink(requestJSONObject);
         Assert.assertNotNull(linkId);
